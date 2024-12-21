@@ -1,18 +1,39 @@
 const express = require('express');
 const app = express();
 
-let ledState = 'off';  // Default LED state
+app.use(express.json());
 
-// ESP32 Polls This Route (GET request)
+let ledState = 'off';
+let temperature = 25;  // Default temperature
+
+// ESP32 Polls for LED Status
 app.get('/', (req, res) => {
-    const action = req.query.action;  // Get action from URL params
+    const { deviceid, action } = req.query;
 
-    if (action === 'on' || action === 'off') {
-        ledState = action;  // Update LED state
-        console.log(`LED set to: ${action}`);
-        res.json({ success: true, state: ledState });
+    if (deviceid === '1') {
+        // LED Control Device
+        if (action === 'on' || action === 'off') {
+            ledState = action;
+        }
+        res.send(ledState);  // Return LED state
+    } else if (deviceid === '2' && action === 'get') {
+        // Return temperature when requested
+        res.json({ success: true, temperature: temperature });
     } else {
-        res.send(ledState);  // Just show current state if no action is sent
+        res.status(400).json({ error: 'Invalid request' });
+    }
+});
+
+// ESP32 Posts Temperature Data
+app.post('/', (req, res) => {
+    const { deviceid, temperature: temp } = req.body;
+
+    if (deviceid === '2' && temp) {
+        temperature = temp;  // Update temperature from ESP32
+        console.log(`Temperature Updated: ${temperature}°C`);
+        res.json({ success: true });
+    } else {
+        res.status(400).json({ error: 'Invalid temperature data' });
     }
 });
 
